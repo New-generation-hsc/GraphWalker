@@ -5,3 +5,4 @@ graphwalker_metrics.txt.statistics
 ./run.sh
 ./monitor/*.csv
 .vscode/
+*.log
