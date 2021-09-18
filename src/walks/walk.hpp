@@ -8,11 +8,18 @@
 #include <unistd.h>
 #include <string>
 #include <queue>
+#include <algorithm>
 
 #include "metrics/metrics.hpp"
 #include "api/filename.hpp"
 #include "api/io.hpp"
 #include "walks/walkbuffer.hpp"
+
+struct cmp {
+	bool operator()(const std::pair<bid_t, wid_t> &p1, const std::pair<bid_t, wid_t> &p2) {
+		return p1.second > p2.second;
+	}
+};
 
 class WalkManager
 {
@@ -212,7 +219,22 @@ public:
 		return maxp;
      }
 
-     bid_t blockWithMinStep(){
+	 std::vector<bid_t> blockWithMaxWalks(bid_t nmblocks){
+		 std::priority_queue<std::pair<bid_t, wid_t>, std::vector<std::pair<bid_t, wid_t>>, cmp> q;
+		 for(bid_t idx = 0; idx < this->nblocks; idx++) {
+			 q.push({idx, walknum[idx]});
+			 if(q.size() > nmblocks) q.pop();
+		 }
+		 std::vector<bid_t> select_blocks;
+		 while(!q.empty()) {
+			 auto p = q.top(); q.pop();
+			 select_blocks.push_back(p.first);
+		 }
+		 reverse(select_blocks.begin(), select_blocks.end());
+		 return select_blocks;
+	 }
+
+	 bid_t blockWithMinStep(){
 		hid_t mins = 0xffff, minp = 0;
 		for(bid_t p = 0; p < nblocks; p++) {
 			if( mins > minstep[p] ){
@@ -262,7 +284,16 @@ public:
 	   	}
 	  	ofs << exec_block << " \t " << walknum[exec_block] << " \t " << sum << std::endl;
 	 	ofs.close();
-     }    
+     }
+
+	 wid_t cachedBlockWalkNum(const std::vector<bid_t>& cached_blocks) {
+		// calculate the walker number in the cached blocks
+		wid_t cached_walks = 0;
+		for(const auto & blk : cached_blocks) {
+			cached_walks += walknum[blk];
+		}
+		return cached_walks;
+	 }
 
 };
 
